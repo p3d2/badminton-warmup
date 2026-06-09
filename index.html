@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0B2419">
+<title>Rally — Badminton Warm-up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800;900&family=Saira:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B2419;          /* deep court green */
+    --surface:#103025;     /* card */
+    --surface-2:#16402F;   /* raised */
+    --line:#1E513B;        /* hairline */
+    --feather:#F4F7F2;     /* off-white */
+    --muted:#7FA08C;       /* muted green-grey */
+    --ink:#08160F;         /* dark text on bright floods */
+
+    --ready:#FFB02E;       /* get ready  */
+    --work:#FF4D2E;        /* push       */
+    --rest:#19C3D6;        /* recover    */
+    --done:#A6F84B;        /* finished   */
+
+    --r:18px;
+    --safe-b:env(safe-area-inset-bottom,0px);
+    --safe-t:env(safe-area-inset-top,0px);
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg);
+    color:var(--feather);
+    font-family:"Saira",system-ui,sans-serif;
+    line-height:1.4;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .num{font-family:"Saira Condensed",sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+  /* ---------- shell ---------- */
+  .app{max-width:480px;margin:0 auto;min-height:100%;position:relative}
+
+  /* ---------- dashboard ---------- */
+  #dashboard{padding:calc(var(--safe-t) + 22px) 18px calc(150px + var(--safe-b))}
+
+  .brand{display:flex;align-items:center;gap:11px;margin-bottom:4px}
+  .shuttle{width:34px;height:34px;flex:none}
+  .brand h1{
+    font-family:"Saira Condensed",sans-serif;font-weight:800;
+    font-size:30px;letter-spacing:.04em;text-transform:uppercase;line-height:1
+  }
+  .brand .tag{display:block;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+  .stats{display:flex;gap:10px;margin:22px 0 16px}
+  .stat{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:13px 14px}
+  .stat .k{font-family:"Saira Condensed";font-weight:800;font-size:28px;line-height:1}
+  .stat .l{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:5px}
+
+  .eyebrow{display:flex;align-items:center;justify-content:space-between;margin:26px 2px 12px}
+  .eyebrow h2{font-family:"Saira Condensed";font-weight:700;font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .eyebrow .count{font-size:12px;color:var(--muted);font-weight:600}
+
+  /* session list */
+  .queue{display:flex;flex-direction:column;gap:10px}
+  .qcard{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+    padding:14px 14px 14px 16px;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden
+  }
+  .qcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--work)}
+  .qcard.break::before{background:var(--rest)}
+  .qcard.break .name{color:var(--rest)}
+  .qcard .body{flex:1;min-width:0}
+  .qcard .name{font-weight:600;font-size:16.5px;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .qcard .meta{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .qcard .meta b{color:var(--feather);font-weight:600;font-variant-numeric:tabular-nums}
+  .qcard .ctrls{display:flex;align-items:center;gap:2px}
+  .icon-btn{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;color:var(--muted);transition:.15s}
+  .icon-btn:active{background:var(--surface-2);color:var(--feather)}
+  .icon-btn svg{width:19px;height:19px}
+  .icon-btn:disabled{opacity:.25}
+
+  .empty{
+    border:1.5px dashed var(--line);border-radius:var(--r);padding:30px 20px;text-align:center;color:var(--muted)
+  }
+  .empty b{display:block;color:var(--feather);font-weight:600;margin-bottom:4px;font-size:15px}
+
+  /* library chips */
+  .lib{display:flex;flex-wrap:wrap;gap:9px}
+  .chip{
+    background:var(--surface);border:1px solid var(--line);border-radius:13px;
+    padding:9px 13px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500
+  }
+  .chip:active{background:var(--surface-2)}
+  .chip .plus{color:var(--done);font-weight:700;font-family:"Saira Condensed";font-size:18px;line-height:1}
+  .chip .sub{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+  .chip.custom{border-style:dashed;color:var(--done)}
+  .chip.brk .plus{color:var(--rest)}
+  .chip.brk.custom{color:var(--rest)}
+
+  .opts{display:flex;gap:18px;margin-top:18px;padding:0 2px}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:500;user-select:none}
+  .sw{width:38px;height:22px;border-radius:11px;background:var(--line);position:relative;transition:.2s;flex:none}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--feather);transition:.2s}
+  .toggle.on .sw{background:var(--done)}
+  .toggle.on .sw::after{transform:translateX(16px);background:var(--ink)}
+  .toggle.on{color:var(--feather)}
+
+  /* start bar */
+  .startbar{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;
+    padding:14px 18px calc(14px + var(--safe-b));
+    max-width:480px;margin:0 auto;
+    background:linear-gradient(to top,var(--bg) 62%,transparent);
+    pointer-events:none
+  }
+  .start{
+    pointer-events:auto;width:100%;height:62px;border-radius:16px;
+    background:var(--work);color:#fff;
+    font-family:"Saira Condensed";font-weight:800;font-size:21px;letter-spacing:.13em;text-transform:uppercase;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    box-shadow:0 10px 30px -8px rgba(255,77,46,.55);transition:.12s
+  }
+  .start:active{transform:translateY(2px);box-shadow:0 4px 14px -8px rgba(255,77,46,.55)}
+  .start:disabled{background:var(--surface-2);color:var(--muted);box-shadow:none}
+  .start svg{width:22px;height:22px}
+
+  /* ---------- bottom sheet ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(4,12,8,.66);opacity:0;pointer-events:none;transition:.22s;z-index:40;backdrop-filter:blur(2px)}
+  .scrim.show{opacity:1;pointer-events:auto}
+  .sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:50;max-width:480px;margin:0 auto;
+    background:var(--surface);border-radius:24px 24px 0 0;border-top:1px solid var(--line);
+    padding:8px 20px calc(22px + var(--safe-b));
+    transform:translateY(110%);transition:transform .26s cubic-bezier(.22,1,.36,1)
+  }
+  .sheet.show{transform:translateY(0)}
+  .grab{width:42px;height:5px;border-radius:3px;background:var(--line);margin:8px auto 16px}
+  .sheet h3{font-family:"Saira Condensed";font-weight:800;font-size:22px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:18px}
+  .field{margin-bottom:16px}
+  .field>label{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:8px}
+  .field input[type=text]{
+    width:100%;background:var(--bg);border:1px solid var(--line);border-radius:12px;
+    padding:14px 14px;color:var(--feather);font-size:17px;font-family:inherit
+  }
+  .field input[type=text]:focus{outline:none;border-color:var(--rest)}
+  .steppers{display:flex;gap:10px}
+  .stepper{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px}
+  .stepper .sl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:center}
+  .stepper .row{display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+  .stepper .row button{width:34px;height:34px;border-radius:10px;background:var(--surface-2);font-size:22px;font-family:"Saira Condensed";font-weight:700;display:grid;place-items:center;color:var(--feather)}
+  .stepper .row button:active{background:var(--line)}
+  .stepper .val{font-family:"Saira Condensed";font-weight:800;font-size:26px;font-variant-numeric:tabular-nums}
+  .stepper .val small{font-size:13px;color:var(--muted);font-weight:600;margin-left:1px}
+  .sheet-actions{display:flex;gap:10px;margin-top:22px}
+  .btn{flex:1;height:54px;border-radius:14px;font-family:"Saira Condensed";font-weight:800;font-size:17px;letter-spacing:.08em;text-transform:uppercase;display:grid;place-items:center}
+  .btn.primary{background:var(--done);color:var(--ink)}
+  .btn.ghost{background:var(--surface-2);color:var(--feather)}
+  .btn.danger{background:transparent;border:1px solid var(--work);color:var(--work);flex:0 0 54px}
+  .btn:active{transform:translateY(1px)}
+
+  /* ---------- timer (fullscreen flood) ---------- */
+  #timer{
+    position:fixed;inset:0;z-index:60;display:none;flex-direction:column;
+    padding:calc(var(--safe-t) + 14px) 20px calc(var(--safe-b) + 24px);
+    color:var(--ink);transition:background-color .4s ease
+  }
+  #timer.show{display:flex}
+  #timer[data-state="ready"]{background:var(--ready)}
+  #timer[data-state="work"]{background:var(--work);color:#fff}
+  #timer[data-state="rest"]{background:var(--rest)}
+  #timer[data-state="break"]{background:var(--rest)}
+  #timer[data-state="done"]{background:var(--bg);color:var(--feather)}
+
+  .t-top{display:flex;align-items:center;justify-content:space-between}
+  .t-state{font-family:"Saira Condensed";font-weight:900;font-size:30px;letter-spacing:.14em;text-transform:uppercase;line-height:1}
+  .t-exit{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:rgba(0,0,0,.14)}
+  #timer[data-state="work"] .t-exit{background:rgba(255,255,255,.18)}
+  #timer[data-state="done"] .t-exit{background:var(--surface)}
+  .t-exit svg{width:22px;height:22px}
+
+  .t-mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+  .t-ex{font-weight:600;font-size:21px;text-align:center;opacity:.9;max-width:90%}
+  .ring-wrap{position:relative;width:min(76vw,330px);aspect-ratio:1;display:grid;place-items:center;margin:6px 0}
+  .ring{
+    position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(currentColor calc(var(--p,100)*1%), rgba(0,0,0,.16) 0);
+    -webkit-mask:radial-gradient(circle, transparent 65%, #000 66%);
+    mask:radial-gradient(circle, transparent 65%, #000 66%);
+    transition:background .25s linear
+  }
+  #timer[data-state="work"] .ring{background:conic-gradient(currentColor calc(var(--p,100)*1%), rgba(255,255,255,.22) 0)}
+  .t-count{font-family:"Saira Condensed";font-weight:800;font-size:clamp(96px,40vw,200px);line-height:.82;font-variant-numeric:tabular-nums}
+  .t-cycle{font-family:"Saira Condensed";font-weight:700;font-size:20px;letter-spacing:.1em;text-transform:uppercase;opacity:.85}
+  .pips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:80%;margin-top:4px}
+  .pip{width:9px;height:9px;border-radius:50%;background:rgba(0,0,0,.22)}
+  #timer[data-state="work"] .pip{background:rgba(255,255,255,.3)}
+  .pip.done{background:currentColor}
+  .t-next{font-size:13.5px;letter-spacing:.04em;opacity:.8;font-weight:500;min-height:18px;text-align:center}
+
+  .t-ctrls{display:flex;gap:12px;align-items:center}
+  .t-ctrls button{height:64px;border-radius:16px;font-family:"Saira Condensed";font-weight:800;letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:9px;font-size:18px}
+  .t-ctrls .sec{flex:0 0 64px;background:rgba(0,0,0,.16)}
+  #timer[data-state="work"] .t-ctrls .sec{background:rgba(255,255,255,.2)}
+  .t-ctrls .sec svg{width:24px;height:24px}
+  .t-ctrls .main{flex:1;background:var(--ink);color:var(--feather)}
+  #timer[data-state="rest"] .t-ctrls .main,#timer[data-state="ready"] .t-ctrls .main{background:var(--ink);color:#fff}
+  #timer[data-state="work"] .t-ctrls .main{background:#fff;color:var(--work)}
+  #timer[data-state="done"] .t-ctrls{flex-direction:column}
+  #timer[data-state="done"] .t-ctrls .main{width:100%;background:var(--done);color:var(--ink)}
+  #timer[data-state="done"] .t-ctrls .sec{display:none}
+  .t-ctrls button:active{transform:translateY(2px)}
+
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+  .t-confirm{position:absolute;inset:0;z-index:5;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(4,12,8,.55);backdrop-filter:blur(3px)}
+  .t-confirm.show{display:flex}
+  .cc-box{width:100%;max-width:340px;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:24px 22px;text-align:center;color:var(--feather)}
+  .cc-title{font-family:"Saira Condensed";font-weight:800;font-size:24px;letter-spacing:.04em;text-transform:uppercase}
+  .cc-sub{color:var(--muted);font-size:14px;margin-top:6px}
+  .cc-actions{display:flex;gap:10px;margin-top:22px}
+  .cc-actions button{flex:1;height:54px;border-radius:14px;font-family:"Saira Condensed";font-weight:800;font-size:17px;letter-spacing:.08em;text-transform:uppercase}
+  .cc-keep{background:var(--surface-2);color:var(--feather)}
+  .cc-stop{background:var(--work);color:#fff}
+  .cc-actions button:active{transform:translateY(1px)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ DASHBOARD ============ -->
+  <main id="dashboard">
+    <div class="brand">
+      <svg class="shuttle" viewBox="0 0 48 48" fill="none">
+        <path d="M24 4 L33 30 H15 Z" fill="#F4F7F2"/>
+        <path d="M24 4 L28 30 M24 4 L24 30 M24 4 L20 30" stroke="#0B2419" stroke-width="1.3"/>
+        <circle cx="24" cy="36" r="6.5" fill="#FF4D2E"/>
+        <path d="M17.5 36 H30.5" stroke="#0B2419" stroke-width="1.4"/>
+      </svg>
+      <div>
+        <span class="tag">Badminton</span>
+        <h1>Rally Warm-up</h1>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="k num" id="stat-time">0:00</div><div class="l">Total time</div></div>
+      <div class="stat"><div class="k num" id="stat-ex">0</div><div class="l">Exercises</div></div>
+      <div class="stat"><div class="k num" id="stat-cycles">0</div><div class="l">Work cycles</div></div>
+    </div>
+
+    <div class="eyebrow">
+      <h2>Your warm-up</h2>
+      <span class="count" id="q-count"></span>
+    </div>
+    <div class="queue" id="queue"></div>
+
+    <div class="eyebrow"><h2>Add an exercise</h2></div>
+    <div class="lib" id="lib"></div>
+
+    <div class="eyebrow"><h2>Add a break</h2></div>
+    <div class="lib" id="breaks"></div>
+
+    <div class="opts">
+      <div class="toggle on" id="t-voice"><span class="sw"></span>Voice cues</div>
+      <div class="toggle on" id="t-beep"><span class="sw"></span>Beeps</div>
+      <div class="toggle on" id="t-vibe"><span class="sw"></span>Vibrate</div>
+    </div>
+  </main>
+
+  <div class="startbar">
+    <button class="start" id="start" disabled>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      <span id="start-label">Add an exercise</span>
+    </button>
+  </div>
+
+  <!-- ============ TIMER ============ -->
+  <section id="timer" data-state="ready">
+    <div class="t-top">
+      <div class="t-state" id="t-state">Get ready</div>
+      <button class="t-exit" id="t-exit" aria-label="Stop workout">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
+      </button>
+    </div>
+    <div class="t-mid">
+      <div class="t-ex" id="t-ex">—</div>
+      <div class="ring-wrap">
+        <div class="ring" id="t-ring"></div>
+        <div class="t-count num" id="t-count">0</div>
+      </div>
+      <div class="t-cycle num" id="t-cycle"></div>
+      <div class="pips" id="t-pips"></div>
+      <div class="t-next" id="t-next"></div>
+    </div>
+    <div class="t-ctrls">
+      <button class="sec" id="t-back" aria-label="Previous">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+      </button>
+      <button class="main" id="t-play">Pause</button>
+      <button class="sec" id="t-skip" aria-label="Skip">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg>
+      </button>
+    </div>
+
+    <div class="t-confirm" id="t-confirm">
+      <div class="cc-box">
+        <div class="cc-title">Stop warm-up?</div>
+        <div class="cc-sub">Your progress won't be saved.</div>
+        <div class="cc-actions">
+          <button class="cc-keep" id="cc-keep">Keep going</button>
+          <button class="cc-stop" id="cc-stop">Stop</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EDIT SHEET ============ -->
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet">
+    <div class="grab"></div>
+    <h3 id="sheet-title">Edit exercise</h3>
+    <div class="field" id="f-name-field">
+      <label>Name</label>
+      <input type="text" id="f-name" placeholder="e.g. Shadow play" autocomplete="off">
+    </div>
+    <div class="steppers" id="f-ex-steppers">
+      <div class="stepper" data-f="cycles">
+        <div class="sl">Cycles</div>
+        <div class="row"><button data-d="-1">–</button><span class="val num" id="v-cycles">1</span><button data-d="1">+</button></div>
+      </div>
+      <div class="stepper" data-f="work">
+        <div class="sl">Work</div>
+        <div class="row"><button data-d="-5">–</button><span class="val num" id="v-work">20<small>s</small></span><button data-d="5">+</button></div>
+      </div>
+      <div class="stepper" data-f="rest">
+        <div class="sl">Rest</div>
+        <div class="row"><button data-d="-5">–</button><span class="val num" id="v-rest">20<small>s</small></span><button data-d="5">+</button></div>
+      </div>
+    </div>
+    <div class="steppers" id="f-break-steppers" style="display:none">
+      <div class="stepper" data-f="secs" style="flex:1">
+        <div class="sl">Break length</div>
+        <div class="row"><button data-d="-15">–</button><span class="val num" id="v-secs">1:00</span><button data-d="15">+</button></div>
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn danger" id="f-delete" aria-label="Remove">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M7 6V4h10v2h5v2h-2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8H2V6zm2 4v8h2v-8zm4 0v8h2v-8z"/></svg>
+      </button>
+      <button class="btn ghost" id="f-cancel">Cancel</button>
+      <button class="btn primary" id="f-save">Save</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+
+/* ---------------- data ---------------- */
+const LIBRARY = [
+  {name:"Shadow play (no shuttle)", cycles:20, work:20, rest:20, say:"shadow play"},
+  {name:"Skipping / jump rope",     cycles:6,  work:30, rest:20, say:"skipping"},
+  {name:"High knees",               cycles:6,  work:20, rest:10, say:"high knees"},
+  {name:"Lunges",                   cycles:6,  work:30, rest:15, say:"lunges"},
+  {name:"Side shuffles",            cycles:8,  work:20, rest:15, say:"side shuffles"},
+  {name:"Shadow smash & recover",   cycles:10, work:15, rest:15, say:"smash and recover"},
+  {name:"Net shot shadow",          cycles:8,  work:20, rest:15, say:"net shots"},
+  {name:"Split-step drill",         cycles:10, work:15, rest:15, say:"split steps"},
+  {name:"Jumping jacks",            cycles:6,  work:30, rest:15, say:"jumping jacks"},
+  {name:"Arm circles",              cycles:4,  work:20, rest:10, say:"arm circles"},
+  {name:"Wrist & forearm rotations",cycles:4,  work:20, rest:10, say:"wrist rotations"},
+];
+const READY_SECS = 5;          // get-ready lead-in before each exercise
+let uid = 1;
+const nid = () => uid++;
+
+// start with a clean, empty warm-up
+let session = [];
+const BREAKS = [{label:"30s",secs:30},{label:"1 min",secs:60},{label:"2 min",secs:120}];
+
+const opts = {voice:true, beep:true, vibe:true};
+
+/* ---------------- helpers ---------------- */
+const $ = s => document.querySelector(s);
+const fmt = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+const exTime = e => e.cycles*e.work + (e.cycles-1)*e.rest;            // rest only between cycles
+const itemTime = e => e.isBreak ? e.secs : (READY_SECS + exTime(e));
+const total = () => session.reduce((a,e)=>a + itemTime(e),0);
+
+/* ---------------- dashboard render ---------------- */
+function renderStats(){
+  const exs = session.filter(e=>!e.isBreak);
+  $("#stat-time").textContent  = fmt(total());
+  $("#stat-ex").textContent    = exs.length;
+  $("#stat-cycles").textContent= exs.reduce((a,e)=>a+e.cycles,0);
+}
+
+function renderQueue(){
+  const q = $("#queue");
+  $("#q-count").textContent = session.length ? fmt(total()) : "";
+  if(!session.length){
+    q.innerHTML = `<div class="empty"><b>No exercises yet</b>Tap one below to build your warm-up.</div>`;
+  } else {
+    q.innerHTML = session.map((e,i)=>{
+      if(e.isBreak){
+        return `<div class="qcard break">
+          <div class="body" data-editbreak="${e.id}">
+            <div class="name">Break</div>
+            <div class="meta">Rest between exercises · <b>${fmt(e.secs)}</b></div>
+          </div>
+          <div class="ctrls">
+            <button class="icon-btn" data-up="${i}" ${i===0?"disabled":""} aria-label="Move up">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8l6 6H6z"/></svg></button>
+            <button class="icon-btn" data-down="${i}" ${i===session.length-1?"disabled":""} aria-label="Move down">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-6-6h12z"/></svg></button>
+          </div>
+        </div>`;
+      }
+      return `
+      <div class="qcard">
+        <div class="body" data-edit="${e.id}">
+          <div class="name">${esc(e.name)}</div>
+          <div class="meta"><b>${e.cycles}</b>× &nbsp;<b>${e.work}s</b> on / <b>${e.rest}s</b> off &nbsp;·&nbsp; ${fmt(exTime(e))}</div>
+        </div>
+        <div class="ctrls">
+          <button class="icon-btn" data-up="${i}" ${i===0?"disabled":""} aria-label="Move up">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8l6 6H6z"/></svg></button>
+          <button class="icon-btn" data-down="${i}" ${i===session.length-1?"disabled":""} aria-label="Move down">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-6-6h12z"/></svg></button>
+        </div>
+      </div>`;}).join("");
+  }
+  const s = $("#start"), sl = $("#start-label");
+  if(session.length){ s.disabled=false; sl.textContent=`Start warm-up · ${fmt(total())}`; }
+  else { s.disabled=true; sl.textContent="Add an exercise"; }
+  renderStats();
+}
+
+function renderLib(){
+  $("#lib").innerHTML =
+    LIBRARY.map((e,i)=>`<button class="chip" data-add="${i}">
+        <span class="plus">+</span>${esc(e.name)}
+        <span class="sub">${e.cycles}×${e.work}/${e.rest}</span>
+      </button>`).join("")
+    + `<button class="chip custom" data-custom="1"><span class="plus">+</span>Custom</button>`;
+  $("#breaks").innerHTML =
+    BREAKS.map((b,i)=>`<button class="chip brk" data-break="${i}"><span class="plus">+</span>${b.label}</button>`).join("")
+    + `<button class="chip brk custom" data-custombreak="1"><span class="plus">+</span>Custom</button>`;
+}
+
+const esc = s => s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------------- dashboard events ---------------- */
+$("#dashboard").addEventListener("click", ev=>{
+  const t = ev.target.closest("[data-add],[data-custom],[data-break],[data-custombreak],[data-up],[data-down],[data-edit],[data-editbreak]");
+  if(!t) return;
+  if(t.dataset.add!=null){ session.push({...LIBRARY[+t.dataset.add], id:nid()}); renderQueue(); }
+  else if(t.dataset.custom){ openSheet(null); }
+  else if(t.dataset.break!=null){ session.push({isBreak:true, secs:BREAKS[+t.dataset.break].secs, id:nid()}); renderQueue(); }
+  else if(t.dataset.custombreak){ openBreak(null); }
+  else if(t.dataset.up!=null){ const i=+t.dataset.up; [session[i-1],session[i]]=[session[i],session[i-1]]; renderQueue(); }
+  else if(t.dataset.down!=null){ const i=+t.dataset.down; [session[i+1],session[i]]=[session[i],session[i+1]]; renderQueue(); }
+  else if(t.dataset.edit!=null){ openSheet(+t.dataset.edit); }
+  else if(t.dataset.editbreak!=null){ openBreak(+t.dataset.editbreak); }
+});
+
+// toggles
+[["#t-voice","voice"],["#t-beep","beep"],["#t-vibe","vibe"]].forEach(([sel,key])=>{
+  $(sel).addEventListener("click",()=>{ opts[key]=!opts[key]; $(sel).classList.toggle("on",opts[key]); });
+});
+
+/* ---------------- edit / add sheet ---------------- */
+let draft=null, editId=null, sheetMode="exercise";
+function openSheet(id){
+  editId=id; sheetMode="exercise";
+  const e = id==null ? {name:"",cycles:8,work:20,rest:15} : session.find(x=>x.id===id);
+  draft = {name:e.name, cycles:e.cycles, work:e.work, rest:e.rest, say:e.say};
+  $("#sheet-title").textContent = id==null ? "New exercise" : "Edit exercise";
+  $("#f-name").value = draft.name;
+  $("#f-name-field").style.display="block";
+  $("#f-ex-steppers").style.display="flex";
+  $("#f-break-steppers").style.display="none";
+  $("#f-delete").style.display = id==null ? "none" : "grid";
+  syncStepper();
+  $("#scrim").classList.add("show"); $("#sheet").classList.add("show");
+}
+function openBreak(id){
+  editId=id; sheetMode="break";
+  const e = id==null ? {secs:60} : session.find(x=>x.id===id);
+  draft = {secs:e.secs};
+  $("#sheet-title").textContent = id==null ? "New break" : "Edit break";
+  $("#f-name-field").style.display="none";
+  $("#f-ex-steppers").style.display="none";
+  $("#f-break-steppers").style.display="flex";
+  $("#f-delete").style.display = id==null ? "none" : "grid";
+  syncStepper();
+  $("#scrim").classList.add("show"); $("#sheet").classList.add("show");
+}
+function closeSheet(){ $("#scrim").classList.remove("show"); $("#sheet").classList.remove("show"); $("#f-name").blur(); }
+function syncStepper(){
+  if(sheetMode==="break"){ $("#v-secs").textContent = fmt(draft.secs); return; }
+  $("#v-cycles").innerHTML = draft.cycles;
+  $("#v-work").innerHTML   = draft.work + "<small>s</small>";
+  $("#v-rest").innerHTML   = draft.rest + "<small>s</small>";
+}
+$("#sheet").addEventListener("click", ev=>{
+  const b = ev.target.closest("[data-d]"); if(!b) return;
+  const f = b.closest(".stepper").dataset.f, d = +b.dataset.d;
+  if(f==="secs")        draft.secs   = Math.max(5, Math.min(900, draft.secs + d));
+  else if(f==="cycles") draft.cycles = Math.max(1, Math.min(60, draft.cycles + d));
+  else                  draft[f]     = Math.max(f==="rest"?0:5, Math.min(600, draft[f] + d));
+  syncStepper();
+});
+$("#f-name").addEventListener("input", e=> draft.name = e.target.value);
+$("#f-cancel").addEventListener("click", closeSheet);
+$("#scrim").addEventListener("click", closeSheet);
+$("#f-delete").addEventListener("click", ()=>{ session = session.filter(x=>x.id!==editId); closeSheet(); renderQueue(); });
+$("#f-save").addEventListener("click", ()=>{
+  if(sheetMode==="break"){
+    if(editId==null) session.push({isBreak:true, secs:draft.secs, id:nid()});
+    else Object.assign(session.find(x=>x.id===editId), {secs:draft.secs});
+  } else {
+    const name = (draft.name||"").trim() || "Exercise";
+    const data = {name, cycles:draft.cycles, work:draft.work, rest:draft.rest, say:draft.say||name.toLowerCase()};
+    if(editId==null) session.push({...data, id:nid()});
+    else Object.assign(session.find(x=>x.id===editId), data);
+  }
+  closeSheet(); renderQueue();
+});
+
+/* ---------------- audio ---------------- */
+let ac=null;
+function unlockAudio(){
+  if(!ac){ try{ ac = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  if(ac && ac.state==="suspended") ac.resume();
+  // prime speech on iOS
+  try{ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u); }catch(e){}
+}
+function beep(freq=880, dur=0.12, vol=0.5){
+  if(!opts.beep || !ac) return;
+  const t=ac.currentTime, o=ac.createOscillator(), g=ac.createGain();
+  o.type="sine"; o.frequency.value=freq;
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(vol,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t+dur+0.02);
+}
+function say(text){
+  if(!opts.voice || !("speechSynthesis" in window)) return;
+  try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text);
+    u.rate=1.05; u.pitch=1; u.volume=1; speechSynthesis.speak(u); }catch(e){}
+}
+function buzz(ms){ if(opts.vibe && navigator.vibrate) navigator.vibrate(ms); }
+
+/* ---------------- timer engine ---------------- */
+// Build a flat list of phases from the session.
+function buildPhases(){
+  const p=[];
+  session.forEach((e,ii)=>{
+    if(e.isBreak){ p.push({type:"break", secs:e.secs, ii}); return; }
+    p.push({type:"ready", secs:READY_SECS, ex:e, ii, label:"Get ready"});
+    for(let c=1;c<=e.cycles;c++){
+      p.push({type:"work", secs:e.work, ex:e, ii, cycle:c});
+      if(c<e.cycles) p.push({type:"rest", secs:e.rest, ex:e, ii, cycle:c});
+    }
+  });
+  return p;
+}
+
+const T = { phases:[], i:0, endAt:0, left:0, paused:false, raf:0, lastSec:null, running:false };
+
+function startWorkout(){
+  unlockAudio();
+  T.phases = buildPhases(); if(!T.phases.length) return;
+  T.i=0; T.running=true; T.paused=false;
+  $("#timer").classList.add("show");
+  requestWakeLock();
+  enterPhase(0, true);
+}
+
+function enterPhase(idx, first){
+  T.i = idx;
+  const ph = T.phases[idx];
+  T.left = ph.secs;
+  T.endAt = performance.now() + ph.secs*1000;
+  T.lastSec = null;
+  renderPhase(ph);
+  // transition cue
+  if(ph.type==="ready"){ buzz(40); say("Get ready. " + (ph.ex.say||ph.ex.name)); }
+  else if(ph.type==="work"){ beep(1320,0.28,0.55); buzz([0,60,40,60]); say(ph.cycle===1 ? "Go" : "Work"); }
+  else if(ph.type==="rest"){ beep(440,0.3,0.5); buzz(80); say("Rest"); }
+  else if(ph.type==="break"){ beep(440,0.32,0.5); buzz(80); say("Break"); }
+  tick();
+}
+
+function renderPhase(ph){
+  const el=$("#timer"); el.dataset.state=ph.type;
+  if(ph.type==="break"){
+    $("#t-state").textContent = "Break";
+    $("#t-ex").textContent = "Rest up";
+    $("#t-cycle").textContent = "";
+    $("#t-pips").innerHTML = "";
+  } else {
+    $("#t-state").textContent = ph.type==="ready"?"Get ready":ph.type==="work"?"Work":"Rest";
+    $("#t-ex").textContent = ph.ex.name;
+    if(ph.type==="ready"){
+      $("#t-cycle").textContent = ph.ex.cycles + " cycles · " + ph.ex.work + "s on / " + ph.ex.rest + "s off";
+    } else {
+      $("#t-cycle").textContent = "Cycle " + ph.cycle + " / " + ph.ex.cycles;
+    }
+    const pips=[]; for(let c=1;c<=ph.ex.cycles;c++){
+      const done = ph.type!=="ready" && (c<ph.cycle || (c===ph.cycle && ph.type==="rest"));
+      pips.push(`<span class="pip ${done?"done":""}"></span>`);
+    }
+    $("#t-pips").innerHTML = pips.join("");
+  }
+  const up = T.phases.slice(T.i+1).find(p=>p.ii!==ph.ii);
+  $("#t-next").textContent = up ? "Next: " + (up.ex ? up.ex.name : "Break") : "Last one — finish strong";
+}
+
+function tick(){
+  cancelAnimationFrame(T.raf);
+  const loop = ()=>{
+    if(T.paused || !T.running) return;
+    const ms = T.endAt - performance.now();
+    const sec = Math.max(0, Math.ceil(ms/1000));
+    const ph = T.phases[T.i];
+    // ring (deplete)
+    $("#t-ring").style.setProperty("--p", Math.max(0, Math.min(100, (ms/(ph.secs*1000))*100)));
+    if(sec!==T.lastSec){
+      T.lastSec=sec;
+      $("#t-count").textContent = sec;
+      if(sec<=3 && sec>=1) beep(sec===1?1000:760, 0.12, 0.5); // 3-2-1 countdown
+    }
+    if(ms<=0){ advance(); return; }
+    T.raf = requestAnimationFrame(loop);
+  };
+  T.raf = requestAnimationFrame(loop);
+}
+
+function advance(){
+  if(T.i+1 < T.phases.length){ enterPhase(T.i+1); }
+  else finish();
+}
+
+function finish(){
+  T.running=false; cancelAnimationFrame(T.raf); releaseWakeLock();
+  const el=$("#timer"); el.dataset.state="done";
+  $("#t-state").textContent="Done"; $("#t-ex").textContent="Warm-up complete";
+  $("#t-count").textContent="✓"; $("#t-cycle").textContent="Nice work — go play.";
+  $("#t-next").textContent=""; $("#t-ring").style.setProperty("--p",100);
+  $("#t-play").textContent="Back to start";
+  beep(660,0.16,0.55); setTimeout(()=>beep(880,0.16,0.55),170); setTimeout(()=>beep(1180,0.32,0.6),340);
+  buzz([0,90,60,90,60,160]); say("Workout complete. Nice work.");
+}
+
+/* timer controls */
+$("#t-play").addEventListener("click", ()=>{
+  if(!T.running){ exitTimer(); return; }                 // "Back to start" on done
+  if(T.paused){
+    T.paused=false; T.endAt = performance.now() + T.left*1000;
+    $("#t-play").textContent="Pause"; tick();
+  } else {
+    T.paused=true; T.left = Math.max(0,(T.endAt-performance.now())/1000);
+    cancelAnimationFrame(T.raf); $("#t-play").textContent="Resume";
+    try{speechSynthesis.cancel();}catch(e){}
+  }
+});
+$("#t-skip").addEventListener("click", ()=>{ if(T.running){ try{speechSynthesis.cancel();}catch(e){} advance(); }});
+$("#t-back").addEventListener("click", ()=>{
+  if(!T.running) return;
+  // if >2s into phase, restart it; else go to previous phase
+  const into = T.phases[T.i].secs - (T.paused?T.left:(T.endAt-performance.now())/1000);
+  const target = (into>2 || T.i===0) ? T.i : T.i-1;
+  T.paused=false; $("#t-play").textContent="Pause"; enterPhase(target);
+});
+let confirmWasPaused=false;
+$("#t-exit").addEventListener("click", ()=>{
+  if(!T.running){ exitTimer(); return; }          // done/idle: exit immediately
+  confirmWasPaused = T.paused;
+  if(!T.paused){                                   // freeze while asking
+    T.paused=true; T.left = Math.max(0,(T.endAt-performance.now())/1000);
+    cancelAnimationFrame(T.raf);
+  }
+  try{speechSynthesis.cancel();}catch(e){}
+  $("#t-confirm").classList.add("show");
+});
+$("#cc-keep").addEventListener("click", ()=>{
+  $("#t-confirm").classList.remove("show");
+  if(!confirmWasPaused && T.running){              // resume only if it was running before
+    T.paused=false; T.endAt = performance.now() + T.left*1000;
+    $("#t-play").textContent="Pause"; tick();
+  }
+});
+$("#cc-stop").addEventListener("click", ()=>{ $("#t-confirm").classList.remove("show"); exitTimer(); });
+
+function exitTimer(){
+  T.running=false; T.paused=false; cancelAnimationFrame(T.raf);
+  try{speechSynthesis.cancel();}catch(e){}
+  releaseWakeLock();
+  $("#t-confirm").classList.remove("show");
+  $("#timer").classList.remove("show");
+  $("#t-play").textContent="Pause";
+}
+
+$("#start").addEventListener("click", startWorkout);
+
+/* keep screen awake */
+let wl=null;
+async function requestWakeLock(){ try{ if("wakeLock" in navigator) wl=await navigator.wakeLock.request("screen"); }catch(e){} }
+function releaseWakeLock(){ try{ wl&&wl.release(); wl=null; }catch(e){} }
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && T.running && !T.paused) requestWakeLock(); });
+
+/* init */
+renderLib(); renderQueue();
+</script>
+</body>
+</html>
