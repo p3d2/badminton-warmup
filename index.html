@@ -107,6 +107,12 @@
   .chip.brk.custom{color:var(--rest)}
   .chip.voice{font-weight:600}
   .chip.voice.on{border-color:var(--done);color:var(--done);background:var(--surface-2)}
+  .voice-select{display:none;width:100%;margin-top:10px;background:var(--surface);border:1px solid var(--line);
+    border-radius:13px;padding:12px 13px;color:var(--feather);font-family:inherit;font-size:14px;font-weight:500;
+    -webkit-appearance:none;appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237FA08C' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 13px center;padding-right:40px}
+  .voice-select.show{display:block}
 
   .opts{display:flex;gap:18px;margin-top:18px;padding:0 2px}
   .toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:500;user-select:none}
@@ -183,6 +189,10 @@
   #timer[data-state="done"]{background:var(--bg);color:var(--feather)}
 
   .t-top{display:flex;align-items:center;justify-content:space-between}
+  .t-bar{position:absolute;top:0;left:0;right:0;height:5px;background:rgba(0,0,0,.16)}
+  #timer[data-state="work"] .t-bar{background:rgba(255,255,255,.22)}
+  .t-bar span{display:block;height:100%;width:0;background:currentColor;transition:width .25s linear}
+  .t-total{flex:1;text-align:right;margin-right:12px;font-weight:700;font-size:15px;opacity:.85;letter-spacing:.02em}
   .t-state{font-family:"Saira Condensed";font-weight:900;font-size:30px;letter-spacing:.14em;text-transform:uppercase;line-height:1}
   .t-exit{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:rgba(0,0,0,.14)}
   #timer[data-state="work"] .t-exit{background:rgba(255,255,255,.18)}
@@ -354,6 +364,7 @@
 
     <div class="eyebrow"><h2>Coach voice</h2></div>
     <div class="lib" id="voices"></div>
+    <select id="voice-pick" class="voice-select" aria-label="Device voice"></select>
   </main>
 
   <div class="startbar">
@@ -365,8 +376,10 @@
 
   <!-- ============ TIMER ============ -->
   <section id="timer" data-state="ready">
+    <div class="t-bar"><span id="t-bar-fill"></span></div>
     <div class="t-top">
       <div class="t-state" id="t-state">Get ready</div>
+      <div class="t-total num" id="t-total"></div>
       <button class="t-exit" id="t-exit" aria-label="Stop workout">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
       </button>
@@ -471,10 +484,20 @@ const BREAKS = [{label:"30s",secs:30},{label:"1 min",secs:60},{label:"2 min",sec
 const opts = {voice:true, beep:true, vibe:true};
 
 // ---- voice personas (the spoken cues) ----
-const pick = a => a[Math.floor(Math.random()*a.length)];
+// pick a random line, avoiding the last several spoken so it rarely repeats
+let _recentLines = [];
+function pick(a){
+  if(a.length<=1) return a[0];
+  let c, tries=0;
+  do { c = a[Math.floor(Math.random()*a.length)]; tries++; }
+  while(_recentLines.includes(c) && tries<8);
+  _recentLines.push(c);
+  if(_recentLines.length > Math.min(6, a.length-1)) _recentLines.shift();
+  return c;
+}
 const PERSONAS = {
   coach: {
-    label:"Coach", sample:"Get ready. Let's warm up.",
+    label:"Coach", sample:"Get ready. Let's warm up.", rate:1.0, pitch:1.0,
     ready:n=>`Get ready. ${n}.`,
     go:c=>c===1?"Go.":pick(["Work.","Keep going.","Push."]),
     rest:()=>"Rest.",
@@ -482,7 +505,7 @@ const PERSONAS = {
     done:()=>"Workout complete. Nice work."
   },
   hype: {
-    label:"Hype", sample:"Let's go, lock in!",
+    label:"Hype", sample:"Let's go, lock in!", rate:1.1, pitch:1.15,
     ready:n=>`Lock in! ${n}, here we go!`,
     go:c=>c===1?"Go go go!":pick(["Push it!","Let's move!","Stay on it!","You got this!"]),
     rest:()=>pick(["Breathe. Shake it out.","Recover up.","Reset and reload."]),
@@ -490,7 +513,7 @@ const PERSONAS = {
     done:()=>"That's the work! Outstanding!"
   },
   toxic: {
-    label:"Toxic 😈", sample:"Oh, you actually showed up?",
+    label:"Toxic 😈", sample:"Oh, you actually showed up?", rate:0.95, pitch:0.8,
     ready:n=>pick([
       `Oh, you're actually here? ${n}.`,
       `Try not to embarrass yourself. ${n}.`,
@@ -631,10 +654,34 @@ const PERSONAS = {
 let voicePersona = "coach";
 const P = () => PERSONAS[voicePersona] || PERSONAS.coach;
 
+// ---- device voice selection (uses voices already on the phone; no downloads) ----
+let voiceList = [];        // available English voices
+let chosenVoiceURI = null; // user's pick (persisted)
+function scoreVoice(v){
+  const n = (v.name||"").toLowerCase();
+  let s = 0;
+  if(/google|natural|neural|enhanced|premium|siri/.test(n)) s += 5; // higher-quality engines
+  if(!v.localService) s += 2;                                       // network voices tend to sound better
+  if(/en-us|en_us/i.test(v.lang)) s += 1;
+  return s;
+}
+function bestVoice(){
+  if(!voiceList.length) return null;
+  if(chosenVoiceURI){ const m = voiceList.find(v=>v.voiceURI===chosenVoiceURI); if(m) return m; }
+  return voiceList.slice().sort((a,b)=>scoreVoice(b)-scoreVoice(a))[0];
+}
+function loadVoices(){
+  if(!("speechSynthesis" in window)) return;
+  const all = speechSynthesis.getVoices() || [];
+  const en = all.filter(v=>/^en([-_]|$)/i.test(v.lang));
+  voiceList = en.length ? en : all;
+  renderVoicePicker();
+}
+
 // ---- simple local persistence (saves on this device) ----
 const STORE_KEY = "badminton_warmup_v1";
 function save(){
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify({session, opts, voicePersona})); }catch(e){}
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify({session, opts, voicePersona, chosenVoiceURI})); }catch(e){}
 }
 function load(){
   try{
@@ -643,6 +690,7 @@ function load(){
     if(Array.isArray(d.session)) session = d.session;
     if(d.opts) Object.assign(opts, d.opts);
     if(d.voicePersona && PERSONAS[d.voicePersona]) voicePersona = d.voicePersona;
+    if(d.chosenVoiceURI) chosenVoiceURI = d.chosenVoiceURI;
     uid = session.reduce((m,e)=>Math.max(m, e.id||0), 0) + 1;
   }catch(e){}
 }
@@ -721,6 +769,16 @@ function renderVoices(){
     `<button class="chip voice ${k===voicePersona?"on":""}" data-voice="${k}">${PERSONAS[k].label}</button>`).join("");
 }
 
+function renderVoicePicker(){
+  const sel = $("#voice-pick");
+  if(!sel) return;
+  if(voiceList.length <= 1){ sel.classList.remove("show"); return; }
+  const current = (bestVoice()||{}).voiceURI;
+  sel.innerHTML = voiceList.map(v=>
+    `<option value="${v.voiceURI}" ${v.voiceURI===current?"selected":""}>${esc(v.name)}</option>`).join("");
+  sel.classList.add("show");
+}
+
 const esc = s => s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 /* ---------------- dashboard events ---------------- */
@@ -748,6 +806,13 @@ $("#voices").addEventListener("click", ev=>{
   voicePersona = b.dataset.voice;
   renderVoices(); save();
   unlockAudio();
+  if(opts.voice) say(P().sample);
+});
+
+// device voice selection (with a spoken preview)
+$("#voice-pick").addEventListener("change", e=>{
+  chosenVoiceURI = e.target.value;
+  save(); unlockAudio();
   if(opts.voice) say(P().sample);
 });
 
@@ -829,8 +894,16 @@ function beep(freq=880, dur=0.12, vol=0.5){
 }
 function say(text){
   if(!opts.voice || !("speechSynthesis" in window)) return;
-  try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text);
-    u.rate=1.05; u.pitch=1; u.volume=1; speechSynthesis.speak(u); }catch(e){}
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    const v = bestVoice(); if(v){ u.voice = v; u.lang = v.lang; }
+    const p = P();
+    u.rate = p.rate || 1.0;
+    u.pitch = p.pitch != null ? p.pitch : 1.0;
+    u.volume = 1;
+    speechSynthesis.speak(u);
+  }catch(e){}
 }
 function buzz(ms){ if(opts.vibe && navigator.vibrate) navigator.vibrate(ms); }
 
@@ -849,12 +922,14 @@ function buildPhases(){
   return p;
 }
 
-const T = { phases:[], i:0, endAt:0, left:0, paused:false, raf:0, lastSec:null, running:false };
+const T = { phases:[], i:0, endAt:0, left:0, paused:false, raf:0, lastSec:null, running:false, totalSecs:0, elapsedBefore:0 };
 
 function startWorkout(){
   unlockAudio();
   T.phases = buildPhases(); if(!T.phases.length) return;
+  T.totalSecs = T.phases.reduce((a,p)=>a+p.secs,0);
   T.i=0; T.running=true; T.paused=false;
+  $("#t-bar-fill").style.width="0%";
   $("#timer").classList.add("show");
   requestWakeLock();
   enterPhase(0, true);
@@ -863,6 +938,7 @@ function startWorkout(){
 function enterPhase(idx, first){
   T.i = idx;
   const ph = T.phases[idx];
+  T.elapsedBefore = T.phases.slice(0, idx).reduce((a,p)=>a+p.secs,0);
   T.left = ph.secs;
   T.endAt = performance.now() + ph.secs*1000;
   T.lastSec = null;
@@ -907,11 +983,16 @@ function tick(){
     const ms = T.endAt - performance.now();
     const sec = Math.max(0, Math.ceil(ms/1000));
     const ph = T.phases[T.i];
-    // ring (deplete)
+    // current-interval ring (deplete)
     $("#t-ring").style.setProperty("--p", Math.max(0, Math.min(100, (ms/(ph.secs*1000))*100)));
+    // whole-workout progress bar
+    const phaseElapsed = ph.secs - Math.max(0, ms/1000);
+    const overall = T.elapsedBefore + Math.min(ph.secs, phaseElapsed);
+    $("#t-bar-fill").style.width = Math.max(0, Math.min(100, (overall/T.totalSecs)*100)) + "%";
     if(sec!==T.lastSec){
       T.lastSec=sec;
       $("#t-count").textContent = sec;
+      $("#t-total").textContent = fmt(Math.max(0, Math.round(T.totalSecs - overall))) + " left";
       if(sec<=3 && sec>=1) beep(sec===1?1000:760, 0.12, 0.5); // 3-2-1 countdown
     }
     if(ms<=0){ advance(); return; }
@@ -931,6 +1012,7 @@ function finish(){
   $("#t-state").textContent="Done"; $("#t-ex").textContent="Warm-up complete";
   $("#t-count").textContent="✓"; $("#t-cycle").textContent="Nice work — go play.";
   $("#t-next").textContent=""; $("#t-ring").style.setProperty("--p",100);
+  $("#t-bar-fill").style.width="100%"; $("#t-total").textContent="";
   $("#t-play").textContent="Back to start";
   beep(660,0.16,0.55); setTimeout(()=>beep(880,0.16,0.55),170); setTimeout(()=>beep(1180,0.32,0.6),340);
   buzz([0,90,60,90,60,160]); say(P().done());
@@ -999,6 +1081,12 @@ load();
   $(sel).classList.toggle("on", !!opts[key]);
 });
 renderLib(); renderVoices(); renderQueue();
+
+/* load device voices (they populate asynchronously on most phones) */
+if("speechSynthesis" in window){
+  loadVoices();
+  speechSynthesis.addEventListener("voiceschanged", loadVoices);
+}
 
 /* install as an app: register the service worker (ignored in the preview here) */
 if("serviceWorker" in navigator){
