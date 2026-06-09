@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#0B2419">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
 <title>Badminton warmup</title>
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgNDggNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iMTIiIGZpbGw9IiMwRjMzMjYiLz48cGF0aCBkPSJNMjQgOSBMMzMgMzAgQzMwIDMyIDE4IDMyIDE1IDMwIFoiIGZpbGw9IiNGNEY3RjIiLz48cGF0aCBkPSJNMjQgMTAgVjMwIE0yMCAxMS41IEwxNy41IDI5IE0yOCAxMS41IEwzMC41IDI5IiBzdHJva2U9IiMwQjI0MTkiIHN0cm9rZS13aWR0aD0iMS4xIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1vcGFjaXR5PSIwLjQiLz48Y2lyY2xlIGN4PSIyNCIgY3k9IjM1IiByPSI2IiBmaWxsPSIjRkY0RDJFIi8+PHBhdGggZD0iTTE4LjYgMzUgSDI5LjQiIHN0cm9rZT0iIzBCMjQxOSIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2Utb3BhY2l0eT0iMC4yNSIvPjwvc3ZnPgo=">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgNDggNDgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iMTIiIGZpbGw9IiMwRjMzMjYiLz48cGF0aCBkPSJNMjQgOSBMMzMgMzAgQzMwIDMyIDE4IDMyIDE1IDMwIFoiIGZpbGw9IiNGNEY3RjIiLz48cGF0aCBkPSJNMjQgMTAgVjMwIE0yMCAxMS41IEwxNy41IDI5IE0yOCAxMS41IEwzMC41IDI5IiBzdHJva2U9IiMwQjI0MTkiIHN0cm9rZS13aWR0aD0iMS4xIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1vcGFjaXR5PSIwLjQiLz48Y2lyY2xlIGN4PSIyNCIgY3k9IjM1IiByPSI2IiBmaWxsPSIjRkY0RDJFIi8+PHBhdGggZD0iTTE4LjYgMzUgSDI5LjQiIHN0cm9rZT0iIzBCMjQxOSIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2Utb3BhY2l0eT0iMC4yNSIvPjwvc3ZnPgo=">
@@ -918,6 +922,11 @@ load();
   $(sel).classList.toggle("on", !!opts[key]);
 });
 renderLib(); renderVoices(); renderQueue();
+
+/* install as an app: register the service worker (ignored in the preview here) */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
 </script>
 </body>
 </html>
