@@ -171,6 +171,14 @@
   .stepper .row button:active{background:var(--line)}
   .stepper .val{min-width:74px;text-align:center;font-family:"Saira Condensed";font-weight:800;font-size:30px;font-variant-numeric:tabular-nums}
   .stepper .val small{font-size:14px;color:var(--muted);font-weight:600;margin-left:1px}
+  .f-modes{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .mrow{display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-size:14px;font-weight:600}
+  .seg{display:flex;gap:6px}
+  .seg button{min-width:42px;padding:8px 0;border-radius:10px;background:var(--surface-2);color:var(--muted);font-family:"Saira Condensed";font-weight:700;font-size:15px;border:1px solid transparent}
+  .seg button.on{background:var(--bg);border-color:var(--done);color:var(--done)}
+  .seg button:active{transform:translateY(1px)}
+  #timer[data-state="delay"]{background:var(--ready)}
+  .ring-wrap.tappable{cursor:pointer}
   .sheet-actions{display:flex;gap:10px;margin-top:22px}
   .btn{flex:1;height:54px;border-radius:14px;font-family:"Saira Condensed";font-weight:800;font-size:17px;letter-spacing:.08em;text-transform:uppercase;display:grid;place-items:center}
   .btn.primary{background:var(--done);color:var(--ink)}
@@ -189,6 +197,7 @@
   #timer[data-state="work"]{background:var(--work);color:#fff}
   #timer[data-state="rest"]{background:var(--rest)}
   #timer[data-state="break"]{background:var(--rest)}
+  #timer[data-state="manual"]{background:var(--rest)}
   #timer[data-state="done"]{background:var(--bg);color:var(--feather)}
 
   .t-top{display:flex;align-items:center;justify-content:space-between}
@@ -437,10 +446,19 @@
         <div class="sl">Work</div>
         <div class="row"><button data-d="-5">–</button><span class="val num" id="v-work">20<small>s</small></span><button data-d="5">+</button></div>
       </div>
-      <div class="stepper" data-f="rest">
+      <div class="stepper" data-f="rest" id="f-rest-stepper">
         <div class="sl">Rest</div>
         <div class="row"><button data-d="-5">–</button><span class="val num" id="v-rest">20<small>s</small></span><button data-d="5">+</button></div>
       </div>
+    </div>
+    <div class="f-modes" id="f-modes">
+      <div class="toggle mrow on" id="f-rest-toggle"><span>Rest between cycles</span><span class="sw"></span></div>
+      <div class="mrow" id="f-delay"><span>Delay before counters</span>
+        <div class="seg" id="f-delay-seg">
+          <button data-delay="0" class="on">0s</button><button data-delay="1">1s</button><button data-delay="2">2s</button><button data-delay="3">3s</button>
+        </div>
+      </div>
+      <div class="toggle mrow" id="f-manual-toggle"><span>Manual start · tap each cycle</span><span class="sw"></span></div>
     </div>
     <div class="steppers" id="f-break-steppers" style="display:none">
       <div class="stepper" data-f="secs">
@@ -716,21 +734,29 @@ function load(){
 /* ---------------- helpers ---------------- */
 const $ = s => document.querySelector(s);
 const fmt = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
-const exTime = e => e.cycles*e.work + (e.cycles-1)*e.rest;            // rest only between cycles
+const restGapOf = e => (e.manual===true || e.restOn===false || !e.rest) ? 0 : e.rest;  // effective gap between cycles
+const delayOf = e => (e.manual===true || !(e.delay>0)) ? 0 : e.delay;                 // small lead-in before counters
+const exTime = e => {
+  const gap = restGapOf(e), d = delayOf(e), n = e.cycles;
+  const delays = d * ((n-1) + (gap>0 ? (n-1) : 0));   // before each work (2..n) and each rest
+  return n*e.work + (n-1)*gap + delays;
+};
 const itemTime = e => e.isBreak ? e.secs : (READY_SECS + exTime(e));
 const total = () => session.reduce((a,e)=>a + itemTime(e),0);
+const hasManual = () => session.some(e=>!e.isBreak && e.manual===true);
+const totalLabel = () => fmt(total()) + (hasManual() ? " +" : "");
 
 /* ---------------- dashboard render ---------------- */
 function renderStats(){
   const exs = session.filter(e=>!e.isBreak);
-  $("#stat-time").textContent  = fmt(total());
+  $("#stat-time").textContent  = totalLabel();
   $("#stat-ex").textContent    = exs.length;
   $("#stat-cycles").textContent= exs.reduce((a,e)=>a+e.cycles,0);
 }
 
 function renderQueue(){
   const q = $("#queue");
-  $("#q-count").textContent = session.length ? fmt(total()) : "";
+  $("#q-count").textContent = session.length ? totalLabel() : "";
   if(!session.length){
     q.innerHTML = `<div class="empty"><b>No exercises yet</b>Tap one below to build your warm-up.</div>`;
   } else {
@@ -749,11 +775,15 @@ function renderQueue(){
           </div>
         </div>`;
       }
+      const gap = restGapOf(e);
+      const mode = e.manual===true ? "manual start" : gap>0 ? gap+"s off" : "no rest";
+      const dly = delayOf(e)>0 ? " · "+delayOf(e)+"s set" : "";
+      const tlabel = fmt(exTime(e)) + (e.manual===true ? " +" : "");
       return `
       <div class="qcard">
         <div class="body" data-edit="${e.id}">
           <div class="name">${esc(e.name)}</div>
-          <div class="meta"><b>${e.cycles}</b>× &nbsp;<b>${e.work}s</b> on / <b>${e.rest}s</b> off &nbsp;·&nbsp; ${fmt(exTime(e))}</div>
+          <div class="meta"><b>${e.cycles}</b>× &nbsp;<b>${e.work}s</b> on · ${mode}${dly} &nbsp;·&nbsp; ${tlabel}</div>
         </div>
         <div class="ctrls">
           <button class="icon-btn" data-up="${i}" ${i===0?"disabled":""} aria-label="Move up">
@@ -764,7 +794,7 @@ function renderQueue(){
       </div>`;}).join("");
   }
   const s = $("#start"), sl = $("#start-label");
-  if(session.length){ s.disabled=false; sl.textContent=`Start warm-up · ${fmt(total())}`; }
+  if(session.length){ s.disabled=false; sl.textContent=`Start warm-up · ${totalLabel()}`; }
   else { s.disabled=true; sl.textContent="Add an exercise"; }
   renderStats();
   save();
@@ -839,7 +869,8 @@ let draft=null, editId=null, sheetMode="exercise";
 function openSheet(id){
   editId=id; sheetMode="exercise";
   const e = id==null ? {name:"",cycles:8,work:20,rest:15} : session.find(x=>x.id===id);
-  draft = {name:e.name, cycles:e.cycles, work:e.work, rest:e.rest, say:e.say, diag:e.diag};
+  draft = {name:e.name, cycles:e.cycles, work:e.work, rest:e.rest, say:e.say, diag:e.diag,
+           restOn: e.restOn!==false, manual: e.manual===true, delay: e.delay||0};
   $("#f-name").value = draft.name;
   const dg = $("#f-diagram");
   if(draft.diag && DIAGRAMS[draft.diag]){ dg.innerHTML = DIAGRAMS[draft.diag]; dg.style.display="block"; }
@@ -847,8 +878,9 @@ function openSheet(id){
   $("#f-name-field").style.display="block";
   $("#f-ex-steppers").style.display="flex";
   $("#f-break-steppers").style.display="none";
+  $("#f-modes").style.display="flex";
   $("#f-delete").style.display = id==null ? "none" : "grid";
-  syncStepper();
+  syncStepper(); syncModes();
   $("#scrim").classList.add("show"); $("#sheet").classList.add("show");
 }
 function openBreak(id){
@@ -859,9 +891,19 @@ function openBreak(id){
   $("#f-name-field").style.display="none";
   $("#f-ex-steppers").style.display="none";
   $("#f-break-steppers").style.display="flex";
+  $("#f-modes").style.display="none";
   $("#f-delete").style.display = id==null ? "none" : "grid";
   syncStepper();
   $("#scrim").classList.add("show"); $("#sheet").classList.add("show");
+}
+function syncModes(){
+  const m = draft.manual, r = draft.restOn;
+  $("#f-manual-toggle").classList.toggle("on", m);
+  $("#f-rest-toggle").style.display = m ? "none" : "flex";
+  $("#f-rest-toggle").classList.toggle("on", r);
+  $("#f-rest-stepper").style.display = (!m && r) ? "flex" : "none";
+  $("#f-delay").style.display = m ? "none" : "flex";   // delay conflicts with instant manual start
+  $("#f-delay-seg").querySelectorAll("button").forEach(b=>b.classList.toggle("on", +b.dataset.delay===(draft.delay||0)));
 }
 function closeSheet(){ $("#scrim").classList.remove("show"); $("#sheet").classList.remove("show"); $("#f-name").blur(); }
 function syncStepper(){
@@ -870,14 +912,27 @@ function syncStepper(){
   $("#v-work").innerHTML   = draft.work + "<small>s</small>";
   $("#v-rest").innerHTML   = draft.rest + "<small>s</small>";
 }
-$("#sheet").addEventListener("click", ev=>{
-  const b = ev.target.closest("[data-d]"); if(!b) return;
-  const f = b.closest(".stepper").dataset.f, d = +b.dataset.d;
+function applyStep(f,d){
   if(f==="secs")        draft.secs   = Math.max(5, Math.min(900, draft.secs + d));
-  else if(f==="cycles") draft.cycles = Math.max(1, Math.min(60, draft.cycles + d));
+  else if(f==="cycles") draft.cycles = Math.max(1, Math.min(99, draft.cycles + d));
   else                  draft[f]     = Math.max(f==="rest"?0:5, Math.min(600, draft[f] + d));
   syncStepper();
+}
+let holdTimer=null, holdInt=null;
+function stopHold(){ clearTimeout(holdTimer); clearInterval(holdInt); holdTimer=holdInt=null; }
+$("#sheet").addEventListener("pointerdown", ev=>{
+  const b = ev.target.closest("[data-d]"); if(!b) return;
+  ev.preventDefault();
+  const f = b.closest(".stepper").dataset.f, d = +b.dataset.d;
+  applyStep(f,d);                                   // one step immediately
+  stopHold();
+  holdTimer = setTimeout(()=>{ holdInt = setInterval(()=>applyStep(f,d), 100); }, 420); // then repeat while held
 });
+["pointerup","pointercancel","pointerleave"].forEach(e=> window.addEventListener(e, stopHold));
+
+$("#f-rest-toggle").addEventListener("click", ()=>{ draft.restOn = !draft.restOn; syncModes(); });
+$("#f-manual-toggle").addEventListener("click", ()=>{ draft.manual = !draft.manual; syncModes(); });
+$("#f-delay-seg").addEventListener("click", ev=>{ const b=ev.target.closest("[data-delay]"); if(!b) return; draft.delay=+b.dataset.delay; syncModes(); });
 $("#f-name").addEventListener("input", e=> draft.name = e.target.value);
 $("#f-cancel").addEventListener("click", closeSheet);
 $("#scrim").addEventListener("click", closeSheet);
@@ -888,7 +943,8 @@ $("#f-save").addEventListener("click", ()=>{
     else Object.assign(session.find(x=>x.id===editId), {secs:draft.secs});
   } else {
     const name = (draft.name||"").trim() || "Exercise";
-    const data = {name, cycles:draft.cycles, work:draft.work, rest:draft.rest, say:draft.say||name.toLowerCase()};
+    const data = {name, cycles:draft.cycles, work:draft.work, rest:draft.rest, say:draft.say||name.toLowerCase(),
+                  restOn:draft.restOn, manual:draft.manual, delay:draft.delay||0};
     if(draft.diag) data.diag = draft.diag;
     if(editId==null) session.push({...data, id:nid()});
     else Object.assign(session.find(x=>x.id===editId), data);
@@ -935,15 +991,26 @@ function buildPhases(){
   session.forEach((e,ii)=>{
     if(e.isBreak){ p.push({type:"break", secs:e.secs, ii}); return; }
     p.push({type:"ready", secs:READY_SECS, ex:e, ii, label:"Get ready"});
+    const manual = e.manual===true;
+    const restGap = (!manual && e.restOn!==false && e.rest>0) ? e.rest : 0;
+    const delay = (!manual && e.delay>0) ? e.delay : 0;
     for(let c=1;c<=e.cycles;c++){
+      if(c>1 && delay>0) p.push({type:"delay", secs:delay, ex:e, ii, cycle:c, to:"work"});
       p.push({type:"work", secs:e.work, ex:e, ii, cycle:c});
-      if(c<e.cycles) p.push({type:"rest", secs:e.rest, ex:e, ii, cycle:c});
+      if(c<e.cycles){
+        if(manual)         p.push({type:"manual", secs:0, ex:e, ii, cycle:c});
+        else if(restGap>0){
+          if(delay>0) p.push({type:"delay", secs:delay, ex:e, ii, cycle:c, to:"rest"});
+          p.push({type:"rest", secs:e.rest, ex:e, ii, cycle:c});
+        }
+        // else: no gap — work flows straight into the next cycle (delay handles any small window)
+      }
     }
   });
   return p;
 }
 
-const T = { phases:[], i:0, endAt:0, left:0, paused:false, raf:0, lastSec:null, running:false, totalSecs:0, elapsedBefore:0 };
+const T = { phases:[], i:0, endAt:0, left:0, paused:false, raf:0, lastSec:null, running:false, totalSecs:0, elapsedBefore:0, awaitingManual:false };
 
 function startWorkout(){
   unlockAudio();
@@ -960,20 +1027,57 @@ function enterPhase(idx, first){
   T.i = idx;
   const ph = T.phases[idx];
   T.elapsedBefore = T.phases.slice(0, idx).reduce((a,p)=>a+p.secs,0);
+  T.awaitingManual = false;
+  renderPhase(ph);
+
+  if(ph.type==="manual"){               // wait here until the user taps Start
+    T.awaitingManual = true;
+    cancelAnimationFrame(T.raf);
+    $("#t-play").textContent = "Start cycle";
+    beep(560,0.18,0.45); buzz(60); say(P().rest());
+    return;
+  }
+
   T.left = ph.secs;
   T.endAt = performance.now() + ph.secs*1000;
   T.lastSec = null;
-  renderPhase(ph);
+  $("#t-play").textContent = "Pause";
   // transition cue
   if(ph.type==="ready"){ buzz(40); say(P().ready(ph.ex.say||ph.ex.name)); }
   else if(ph.type==="work"){ beep(1320,0.28,0.55); buzz([0,60,40,60]); say(P().go(ph.cycle)); }
   else if(ph.type==="rest"){ beep(440,0.3,0.5); buzz(80); say(P().rest()); }
   else if(ph.type==="break"){ beep(440,0.32,0.5); buzz(80); say(P().brk()); }
+  // delay: no voice — the per-second countdown beeps carry it
   tick();
 }
 
 function renderPhase(ph){
   const el=$("#timer"); el.dataset.state=ph.type;
+  document.querySelector(".ring-wrap").classList.toggle("tappable", ph.type==="manual");
+  if(ph.type==="delay"){
+    $("#t-state").textContent = "Get set";
+    $("#t-ex").textContent = ph.ex.name;
+    $("#t-cycle").textContent = ph.to==="rest" ? "Rest coming" : ("Cycle " + ph.cycle + " / " + ph.ex.cycles);
+    const done = ph.to==="rest" ? ph.cycle : ph.cycle-1;
+    const pips=[]; for(let c=1;c<=ph.ex.cycles;c++) pips.push(`<span class="pip ${c<=done?"done":""}"></span>`);
+    $("#t-pips").innerHTML = pips.join("");
+    const up = T.phases.slice(T.i+1).find(p=>p.ii!==ph.ii);
+    $("#t-next").textContent = up ? "Next: " + (up.ex ? up.ex.name : "Break") : "";
+    return;
+  }
+  if(ph.type==="manual"){
+    const nextCycle = ph.cycle + 1;
+    $("#t-state").textContent = "Ready";
+    $("#t-ex").textContent = ph.ex.name;
+    $("#t-cycle").textContent = "Tap to start cycle " + nextCycle + " / " + ph.ex.cycles;
+    $("#t-count").textContent = "▶";
+    $("#t-ring").style.setProperty("--p", 100);
+    const pips=[]; for(let c=1;c<=ph.ex.cycles;c++) pips.push(`<span class="pip ${c<=ph.cycle?"done":""}"></span>`);
+    $("#t-pips").innerHTML = pips.join("");
+    const up = T.phases.slice(T.i+1).find(p=>p.ii!==ph.ii);
+    $("#t-next").textContent = up ? "Next: " + (up.ex ? up.ex.name : "Break") : "";
+    return;
+  }
   if(ph.type==="break"){
     $("#t-state").textContent = "Break";
     $("#t-ex").textContent = "Rest up";
@@ -983,7 +1087,9 @@ function renderPhase(ph){
     $("#t-state").textContent = ph.type==="ready"?"Get ready":ph.type==="work"?"Work":"Rest";
     $("#t-ex").textContent = ph.ex.name;
     if(ph.type==="ready"){
-      $("#t-cycle").textContent = ph.ex.cycles + " cycles · " + ph.ex.work + "s on / " + ph.ex.rest + "s off";
+      const e=ph.ex, manual=e.manual===true, restGap=(!manual && e.restOn!==false && e.rest>0)?e.rest:0;
+      const tail = manual ? "tap to start each cycle" : restGap>0 ? (e.work+"s on / "+restGap+"s off") : (e.work+"s on, no rest");
+      $("#t-cycle").textContent = e.cycles + " cycles · " + tail;
     } else {
       $("#t-cycle").textContent = "Cycle " + ph.cycle + " / " + ph.ex.cycles;
     }
@@ -1040,8 +1146,16 @@ function finish(){
 }
 
 /* timer controls */
+function startManualCycle(){
+  if(!T.awaitingManual) return;
+  T.awaitingManual=false; try{speechSynthesis.cancel();}catch(e){}
+  advance();
+}
+document.querySelector(".ring-wrap").addEventListener("click", ()=>{ if(T.awaitingManual) startManualCycle(); });
+
 $("#t-play").addEventListener("click", ()=>{
   if(!T.running){ exitTimer(); return; }                 // "Back to start" on done
+  if(T.awaitingManual){ startManualCycle(); return; }
   if(T.paused){
     T.paused=false; T.endAt = performance.now() + T.left*1000;
     $("#t-play").textContent="Pause"; tick();
@@ -1063,7 +1177,7 @@ let confirmWasPaused=false;
 $("#t-exit").addEventListener("click", ()=>{
   if(!T.running){ exitTimer(); return; }          // done/idle: exit immediately
   confirmWasPaused = T.paused;
-  if(!T.paused){                                   // freeze while asking
+  if(!T.paused && !T.awaitingManual){              // freeze while asking (nothing to freeze if awaiting a tap)
     T.paused=true; T.left = Math.max(0,(T.endAt-performance.now())/1000);
     cancelAnimationFrame(T.raf);
   }
@@ -1072,6 +1186,7 @@ $("#t-exit").addEventListener("click", ()=>{
 });
 $("#cc-keep").addEventListener("click", ()=>{
   $("#t-confirm").classList.remove("show");
+  if(T.awaitingManual) return;                     // still waiting for the tap; nothing to resume
   if(!confirmWasPaused && T.running){              // resume only if it was running before
     T.paused=false; T.endAt = performance.now() + T.left*1000;
     $("#t-play").textContent="Pause"; tick();
