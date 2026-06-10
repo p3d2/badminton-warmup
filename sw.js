@@ -1,6 +1,6 @@
 // Simple offline cache for the Badminton warmup app.
 // Bump CACHE (e.g. v2, v3) whenever you upload a new index.html so phones pull the update.
-const CACHE = "badminton-warmup-v2";
+const CACHE = "badminton-warmup-v3";
 const ASSETS = [
   "./",
   "./index.html",
